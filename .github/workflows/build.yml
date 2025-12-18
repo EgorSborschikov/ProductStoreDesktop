@@ -1,0 +1,37 @@
+name: Build WPF App
+
+on: 
+    release:
+        types: [published]
+
+jobs:
+    build:
+        runs-on: wndows-latest
+
+        steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Setup MSBuild
+          uses: microsoft/setup-msbuild@v2
+
+        - name: Restore NuGet packages
+          run: nuget restore ProductStoreDesktop.sln
+
+        - name: Build solution
+          run: msbuild ProductStoreDesktop.sln /p:Configuration=Release /p:Platform="Any CPU" /p:OutDir="${{ github.workspace }}/output/"
+
+        - name: Create distributive folder
+          run: |
+            mkdir distrib
+            xcopy "${{ github.workspace }}\output\" "distrib\" /E /I /Y
+
+        - name: Create ZIP archive
+          run: |
+            Compress-Archive -Path "distrib\*" -DestinationPath "ProductStoreDesktop.zip"
+
+        - name: Upload ZIP to Release
+          uses: softprops/action-gh-release@v2
+          if: github.event_name == 'release'
+          with:
+            files: ProductStoreDesktop.zip
